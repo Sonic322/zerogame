@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Zero Tactics</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #111;
+      color: #eee;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 300px;
+      background-color: #1f2937;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      border-left: 1px solid #374151;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0 0 10px;
+    }
+
+    .grid-wrapper {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(20, 64px);
+      gap: 2px;
+      background-color: #222;
+      border: 2px solid #333;
+      padding: 4px;
+      margin-right: 24px;
+    }
+
+    .cell {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(#2b2b2b, #1c1c1c);
+      border: 1px solid #555;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .cell:hover {
+      box-shadow: inset 0 0 6px #c2fc01;
+    }
+
+    .cell.selected {
+      outline: 3px solid #3b82f6;
+      z-index: 1;
+    }
+
+    .unit img {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    button {
+      background-color: #3b82f6;
+      border: none;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background-color: #2563eb;
+    }
+
+    .info-panel {
+      background-color: #1f2937;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #374151;
+    }
+
+    .unit img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+  </style>
+</head>
+<body>
+
+  <div class="grid-wrapper">
+    <div id="map" class="grid"></div>
+  </div>
+
+  <div class="sidebar">
+    <h1>🎖 Zero Tactics</h1>
+
+    <div class="controls">
+      <button onclick="alert('Постройка ещё не реализована')">Построить</button>
+      <button onclick="alert('Атака ещё не реализована')">Атака</button>
+      <button onclick="endTurn()">Ход</button>
+      <button onclick="alert('Ген. способность ещё не реализована')">Ген. способность</button>
+    </div>
+
+    <div id="info" class="info-panel">
+      <strong>Выберите юнита или клетку</strong>
+    </div>
+  </div>
+
+  <script>
+    const mapWidth = 20;
+    const mapHeight = 25;
+    const mapData = Array.from({ length: mapHeight }, () => Array(mapWidth).fill(null));
+
+    mapData[1][1] = {
+      type: 'Танк',
+      icon: 'battlemaster',
+      range: 3,
+      dps: 20,
+      hp: 100
+    };
+
+    mapData[3][4] = {
+      type: 'Пехота',
+      icon: 'tankhunter',
+      range: 2,
+      dps: 10,
+      hp: 60
+    };
+
+    mapData[6][6] = {
+      type: 'Ракетный багги',
+      icon: 'rocketbuggy',
+      range: 4,
+      dps: 25,
+      hp: 80
+    };
+
+    let selected = null;
+    const mapElement = document.getElementById('map');
+    const infoPanel = document.getElementById('info');
+
+    function renderMap() {
+      mapElement.innerHTML = '';
+
+      for (let y = 0; y < mapHeight; y++) {
+        for (let x = 0; x < mapWidth; x++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.dataset.x = x;
+          cell.dataset.y = y;
+
+          const unit = mapData[y][x];
+          if (unit) {
+            const unitDiv = document.createElement('div');
+            unitDiv.className = 'unit';
+            const img = document.createElement('img');
+            img.src = `images/${unit.icon}.png`;
+            img.alt = unit.type;
+            unitDiv.appendChild(img);
+            cell.appendChild(unitDiv);
+          }
+
+          if (selected && selected.x === x && selected.y === y) {
+            cell.classList.add('selected');
+          }
+
+          cell.onclick = () => handleCellClick(x, y);
+          mapElement.appendChild(cell);
+        }
+      }
+    }
+
+    function handleCellClick(x, y) {
+      const cellUnit = mapData[y][x];
+
+      if (selected) {
+        if (!cellUnit) {
+          mapData[y][x] = mapData[selected.y][selected.x];
+          mapData[selected.y][selected.x] = null;
+          selected = null;
+          updateInfo('Юнит перемещён');
+        } else {
+          selected = null;
+          updateInfo(`Клетка занята: ${cellUnit.type}`, cellUnit);
+        }
+      } else if (cellUnit) {
+        selected = { x, y };
+        updateInfo(`Выбран юнит: ${cellUnit.type}`, cellUnit);
+      } else {
+        updateInfo('Пустая клетка');
+      }
+
+      renderMap();
+    }
+
+    function updateInfo(text, unit = null) {
+      if (unit) {
+        infoPanel.innerHTML = `
+          <strong>${text}</strong><br>
+          🔫 Урон/сек: ${unit.dps}<br>
+          🛡 Здоровье: ${unit.hp}<br>
+          🎯 Дальность: ${unit.range}
+        `;
+      } else {
+        infoPanel.innerHTML = `<strong>${text}</strong>`;
+      }
+    }
+
+    function endTurn() {
+      selected = null;
+      updateInfo('Ход завершён. Выберите юнита.');
+      renderMap();
+    }
+
+    renderMap();
+  </script>
+</body>
+</html>
